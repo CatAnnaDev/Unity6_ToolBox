@@ -59,6 +59,30 @@ namespace CatAnnaDev.Samples
 
         [MenuItem(Root + "UI Demo", false, 13)]
         private static void CreateUI() => Spawn<UIDemo>("CatAnnaDev UI Demo");
+
+        [MenuItem(Root + "UI Controls Demo", false, 14)]
+        private static void CreateUIControls() => Spawn<UIControlsDemo>("CatAnnaDev UI Controls Demo");
+
+        [MenuItem(Root + "Physics Demo", false, 15)]
+        private static void CreatePhysics() => Spawn<PhysicsDemo>("CatAnnaDev Physics Demo");
+
+        [MenuItem(Root + "Lifecycle Demo", false, 16)]
+        private static void CreateLifecycle() => Spawn<LifecycleDemo>("CatAnnaDev Lifecycle Demo");
+
+        [MenuItem(Root + "Input Demo", false, 17)]
+        private static void CreateInput() => Spawn<InputDemo>("CatAnnaDev Input Demo");
+
+        [MenuItem(Root + "Sequence Demo", false, 18)]
+        private static void CreateSequence() => Spawn<SequenceDemo>("CatAnnaDev Sequence Demo");
+
+        [MenuItem(Root + "Springs Demo", false, 19)]
+        private static void CreateSprings() => Spawn<SpringDemo>("CatAnnaDev Springs Demo");
+
+        [MenuItem(Root + "Camera Demo", false, 20)]
+        private static void CreateCamera() => Spawn<CameraDemo>("CatAnnaDev Camera Demo");
+
+        [MenuItem(Root + "Reactive Demo", false, 21)]
+        private static void CreateReactive() => Spawn<ReactiveDemo>("CatAnnaDev Reactive Demo");
     }
 }
 #endif

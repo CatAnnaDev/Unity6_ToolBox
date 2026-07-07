@@ -1,12 +1,13 @@
 # CatAnnaDev
 
-A drop-in toolkit of developer quality-of-life systems for Unity. Pure C#, zero external dependencies, portable.
+A drop-in toolkit of developer quality-of-life systems for Unity. Pure C# core, minimal and mostly optional dependencies, portable.
 
 - Unity 6.2 (6000.5) / C# 9 / netstandard2.1
 - Root namespace: `CatAnnaDev`
-- 191 C# scripts across 13 runtime systems, complete editor tooling, 13 runnable demos, plus a 160-function HLSL shader library
+- 224 C# scripts across 20 runtime systems, complete editor tooling, 22 runnable demos, plus a 160-function HLSL shader library
 - New Input System only (no legacy `UnityEngine.Input`), so nothing forces a project config change
-- Verified: runtime, editor and samples assemblies compile clean against the Unity 6.2 managed assemblies; every `.hlsl` compiles clean under glslang
+- Core is pure C# with no external package dependencies; the UI helpers use Unity UI (uGUI, a built-in module) and the Input helpers use the Input System package (their code is compiled out when the package is absent)
+- Targets the Unity 6.2 managed assemblies; every `.hlsl` compiles clean under glslang
 
 ## Layout
 
@@ -19,7 +20,7 @@ Assets/CatAnnaDev/
   Resources/      (created on demand)  CatAnnaDevSettings asset lives here
 ```
 
-Three assembly definitions keep editor and sample code out of your runtime builds; the core is pure C# with zero external dependencies. `ShaderLibrary/` is plain `.hlsl` (no assembly, no C#) that any shader can `#include`. Delete the `Samples/` folder any time; nothing else depends on it.
+Three assembly definitions keep editor and sample code out of your runtime builds; the core is pure C#. The `UI` module uses Unity UI (uGUI, a built-in module) and the `Input` module uses the Input System package (its code is guarded by `ENABLE_INPUT_SYSTEM`, so it simply disappears when the package is absent). `ShaderLibrary/` is plain `.hlsl` (no assembly, no C#) that any shader can `#include`. Delete the `Samples/` folder any time; nothing else depends on it.
 
 ## Quick start
 
@@ -124,7 +125,18 @@ transform.TweenPosition(target, 1.25f).SetEase(Ease.OutBack).SetLoops(-1, LoopTy
 material.TweenColor(Color.red, 1f);
 Tweener.To(0f, 1f, 1f, v => slider.value = v);
 ```
-Demo: TweeningDemo.
+
+`Sequence` chains and parallelises tweens on a timeline: `Append` (after the previous group), `Join` (parallel with it), `AppendInterval`, `AppendCallback`, plus `OnComplete` / `SetLoops` / `Pause` / `Resume` / `Kill`. Each step is a factory, so a tween's `from` value is captured when the step actually starts.
+
+```csharp
+Sequence.Create()
+    .Append(() => panel.TweenAnchoredPosition(shown, 0.3f).SetEase(Ease.OutBack))
+    .Join(() => group.TweenAlpha(1f, 0.3f))
+    .AppendInterval(0.5f)
+    .AppendCallback(() => ready = true)
+    .Play();
+```
+Demos: TweeningDemo, SequenceDemo.
 
 ### Scheduling (`CatAnnaDev.Scheduling`)
 `FrameScheduler` (NextFrame / After / Every with cancelable handles) and a `MainThreadDispatcher` to marshal work back from background threads.
@@ -187,6 +199,97 @@ VFXManager.Instance.Prewarm(explosionPrefab, 8);
 VFXManager.Instance.Play(explosionData, hit.point, hit.normal);
 ```
 Demo: VFXDemo. Editor: VFXData inspector with prefab validation.
+
+### UI (`CatAnnaDev.UI`)
+An ultra-simple pointer/interaction API plus a custom animated button. `PointerEvents` forwards every EventSystems handler (enter / exit / down / up / click / drag / scroll / select / submit) as chainable callbacks and inspector UnityEvents; fluent extensions (`OnClick`, `OnHover`, `OnPointerDown`, ...) auto-add it to any GameObject. `CatButton` is a fully configurable animated button (scale + tint driven by the Tweening system) with a fluent setup. Also one-liner bindings for the standard uGUI controls and UI tween helpers (`Graphic.TweenColor`, `RectTransform.TweenAnchoredPosition`). Uses Unity UI (uGUI).
+
+```csharp
+using CatAnnaDev.UI;
+
+panel.OnClick(() => Open()).OnHover(() => Highlight(), () => Unhighlight());
+
+image.AsButton()
+     .WithHoverScale(1.08f).WithPressScale(0.92f)
+     .WithMotion(0.14f, Ease.OutBack)
+     .OnClick(() => Play());
+
+slider.OnChanged(v => volume = v);
+toggle.OnToggled(on => mute = on);
+```
+Demos: UIDemo, UIControlsDemo.
+
+### Physics (`CatAnnaDev.Physics`)
+Zero-boilerplate collision and trigger callbacks - no per-object MonoBehaviour to write. `PhysicsEvents` (3D) and `PhysicsEvents2D` forward every collision/trigger message as chainable callbacks and public events, with tag-filtered convenience overloads.
+
+```csharp
+using CatAnnaDev.Physics;
+
+zone.OnTriggerEnter(other => Damage(other))
+    .OnTriggerExitTag("Player", _ => LeaveZone());
+ground.OnCollisionEnter(c => Land(c.relativeVelocity));
+sprite.OnTriggerEnter2D(o => Pickup(o));
+```
+Demo: PhysicsDemo.
+
+### Lifecycle (`CatAnnaDev.Lifecycle`)
+Subscribe to any GameObject's lifecycle from the outside, without writing a script on it. `LifecycleHooks` exposes enable / disable / destroy / update / late-update / fixed-update / became-visible / became-invisible / application pause / focus / quit as chainable callbacks; fluent extensions auto-add it.
+
+```csharp
+using CatAnnaDev.Lifecycle;
+
+go.OnDestroyed(() => Unsubscribe());
+enemy.OnBecameInvisible(() => pool.Despawn(enemy));
+go.Lifecycle().OnUpdate(Tick).OnApplicationPaused(SaveIfPaused);
+```
+Demo: LifecycleDemo.
+
+### Input (`CatAnnaDev.Input`)
+Fluent binding for Input System `InputAction`s with lifecycle-tied auto-dispose, so subscriptions never leak. `action.OnStarted / OnPerformed / OnCanceled(...)` returns a binder you can `Enable()` and `DisposeWith(gameObject)`. Requires the Input System package (compiled out when absent).
+
+```csharp
+using CatAnnaDev.Input;
+
+jump.OnPerformed(_ => Jump())
+    .OnCanceled(_ => StopJump())
+    .Enable()
+    .DisposeWith(gameObject);
+```
+Demo: InputDemo.
+
+### Springs (`CatAnnaDev.Springs`)
+Damped springs for procedural, duration-free motion (juice, camera lag, elastic UI). `SpringFloat` / `SpringVector2` / `SpringVector3`, configured by stiffness and damping, stable at any frame rate via internal substepping.
+
+```csharp
+using CatAnnaDev.Springs;
+
+readonly SpringVector3 spring = new SpringVector3(stiffness: 120f, damping: 14f);
+void Update() => transform.position = spring.Update(target.position, Time.deltaTime);
+```
+Demo: SpringDemo.
+
+### Camera (`CatAnnaDev.Cameras`)
+`CameraShaker` applies trauma-based Perlin shake to position and rotation and decays it on its own, with a static `CameraShake.Shake(trauma)` facade. `CameraFollow` is a SmoothDamp follow with offset and optional look-at. Fluent `go.Shaker()` / `rig.Follow(target)`. Rig convention: follow on the root, shaker on the child camera.
+
+```csharp
+using CatAnnaDev.Cameras;
+
+rig.Follow(player).SetSmoothTime(0.15f).SetLookAt(true);
+mainCamera.Shaker();
+CameraShake.Shake(0.6f);
+```
+Demo: CameraDemo.
+
+### Reactive (`CatAnnaDev.Reactive`)
+`Observable<T>` is a lightweight bindable value that pushes changes to its subscribers - and only when the value actually changes - so UI reacts without polling. `Subscribe` / `SubscribeAndInvoke` return an `IDisposable`, and `DisposeWith(gameObject)` auto-cleans it through the Lifecycle module.
+
+```csharp
+using CatAnnaDev.Reactive;
+
+Observable<int> score = new Observable<int>(0);
+score.SubscribeAndInvoke(v => label.text = v.ToString()).DisposeWith(gameObject);
+score.Value += 10;
+```
+Demo: ReactiveDemo.
 
 ### Utils (`CatAnnaDev.Utils`)
 The big grab-bag (45 scripts): extension methods (Transform / GameObject / Vector / Color / Collection / String / LayerMask / ...), math and random helpers, `WeightedList`, `CircularBuffer`, `PriorityQueue`, `SerializableDictionary`, `SerializableGuid`, `Optional<T>`, `MinMaxRange`, `WaitCache`, `CoroutineRunner`, `Cooldown`, `SceneLoader`, `FPSCounter`, collection pools (`ListPool` / `DictionaryPool` / `HashSetPool` / `StringBuilderPool`), and a full set of inspector attributes.
@@ -260,4 +363,4 @@ Fastest path: `Tools > CatAnnaDev > Samples > <name>` creates a GameObject with 
 - `[Button]` on a method renders in the Inspector only when the scripting define `CATANNADEV_GLOBAL_INSPECTOR` is set (Project Settings > Player > Scripting Define Symbols). It is off by default so it never hijacks other custom inspectors. All other attribute drawers work automatically.
 - Pooling and the manager singletons are main-thread only. `ObjectPool<T>` / `LinkedPool<T>` are not internally synchronized; use `MainThreadDispatcher` to hop threads.
 - The pack logs through `CatLog`, filtered by `CatAnnaDevSettings` (log level, in-build logging, color).
-- Everything is pure C# with no external package dependencies. If you ever hit a measured hot path that needs native speed, add a Burst job or an FFI module at that spot only.
+- Core systems are pure C# with no external package dependencies. The `UI` module needs Unity UI (uGUI, a built-in module) and the `Input` module needs the Input System package (guarded by `ENABLE_INPUT_SYSTEM`). If you ever hit a measured hot path that needs native speed, add a Burst job or an FFI module at that spot only.
