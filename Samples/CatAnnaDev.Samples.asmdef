@@ -1,0 +1,17 @@
+{
+    "name": "CatAnnaDev.Samples",
+    "rootNamespace": "CatAnnaDev.Samples",
+    "references": [
+        "CatAnnaDev",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
