@@ -56,6 +56,9 @@ namespace CatAnnaDev.Samples
 
         [MenuItem(Root + "Attributes Showcase", false, 12)]
         private static void CreateAttributes() => Spawn<AttributesShowcase>("CatAnnaDev Attributes Showcase");
+
+        [MenuItem(Root + "UI Demo", false, 13)]
+        private static void CreateUI() => Spawn<UIDemo>("CatAnnaDev UI Demo");
     }
 }
 #endif

@@ -3,7 +3,8 @@
     "rootNamespace": "CatAnnaDev.Samples",
     "references": [
         "CatAnnaDev",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
